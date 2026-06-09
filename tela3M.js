@@ -13,11 +13,12 @@ let alturaCam = 15;
 let larguraCoringa = 5;
 let alturaCoringa = 6;
 
-//  aceleração
+// aceleração
 let aceleracao = 0.05; 
 
 // Balanço dos balões
 let anguloBalao = 0;
+let baloes = []; // Declarando a variável globalmente para evitar erros de escopo
 
 // Os "HA HA HA"
 let hahas = [];
@@ -32,10 +33,22 @@ let granaY = [];
 let granaVelocidade = [];
 let totalGrana = 30; 
 
+// CONFIGURAÇÃO DO BOTÃO VOLTAR
+let btnVoltar = {
+  x: 20,
+  y: 20,
+  w: 110,
+  h: 40,
+  texto: "← Voltar"
+};
+
 function preload() {
   imgEstrada = loadImage('img/estrada.jpg'); 
   imgCaminhao = loadImage('img/caminhao_swap.png'); 
   imgCoringa = loadImage('img/coringa_porta.png');  
+  
+  // Adicionado soundFormats antes de carregar o som para evitar o travamento em "Loading..."
+  soundFormats('mp3'); 
   risadaCoringa = loadSound('musi/risada.mp3'); 
 }
 
@@ -83,7 +96,6 @@ function draw() {
   if (risadaCoringa && !risadaCoringa.isPlaying() && larguraCam >= 15 && larguraCam <= 25) {
     risadaCoringa.loop(); 
   }
-
   
   // Jipe mais lento
   camY = camY + aceleracao;             
@@ -98,7 +110,6 @@ function draw() {
 
   // A velocidade aumenta 
   aceleracao = aceleracao + 0.02;
-  // ==============================================
 
   // Reseta só depois que sair completamente da tela por baixo
   if (camY > height + (alturaCam / 2)) {
@@ -115,8 +126,6 @@ function draw() {
     aceleracao = 0.05; 
   }
 
-  // Imagens
-  
   // Coringa atrás do volante
   if (imgCoringa) {
     let coringaX = camX + (larguraCam * 0.12); 
@@ -136,19 +145,81 @@ function draw() {
   desenharDinheiro();
   desenharHahas();
   desenharGasDoRiso();
+  
+  // DESENHAR O BOTÃO DE VOLTAR
+  desenharBotaoVoltar();
+
+  // DESENHAR A MENSAGEM DOS BALÕES
+  desenharAvisoBaloes();
+}
+
+function desenharBotaoVoltar() {
+  push(); 
+  rectMode(CORNER);
+  
+  if (mouseX >= btnVoltar.x && mouseX <= btnVoltar.x + btnVoltar.w &&
+      mouseY >= btnVoltar.y && mouseY <= btnVoltar.y + btnVoltar.h) {
+    fill(130, 0, 180); 
+    cursor(HAND);
+  } else {
+    fill(50, 0, 80, 200); 
+    cursor(ARROW);
+  }
+  
+  stroke(50, 255, 50); 
+  strokeWeight(2);
+  rect(btnVoltar.x, btnVoltar.y, btnVoltar.w, btnVoltar.h, 8); 
+  
+  noStroke();
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(16);
+  text(btnVoltar.texto, btnVoltar.x + btnVoltar.w / 2, btnVoltar.y + btnVoltar.h / 2);
+  pop();
+}
+
+function desenharAvisoBaloes() {
+  push();
+  textAlign(CENTER, CENTER);
+  textSize(18);
+  
+  // Efeito neon verde do Coringa atrás do texto
+  fill(50, 255, 50, 180);
+  text("Clique nos balões para voltar ao Menu Inicial", width / 2 + 2, height - 50 + 2);
+  
+  // Texto principal em branco na frente
+  fill(255);
+  text("Clique nos balões para voltar ao Menu Inicial", width / 2, height - 50);
+  pop();
 }
 
 function mousePressed() {
   userStartAudio();
+
+  // 1. VERIFICA SE CLICOU NO BOTÃO VOLTAR
+  if (mouseX >= btnVoltar.x && mouseX <= btnVoltar.x + btnVoltar.w &&
+      mouseY >= btnVoltar.y && mouseY <= btnVoltar.y + btnVoltar.h) {
+    window.location.href = "tela1M.html";
+    return; 
+  }
+
+  // 2. CONTROLE DA RISADA DO CORINGA
   if (risadaCoringa && !risadaCoringa.isPlaying()) {
     risadaCoringa.loop();
+  }
+
+  // 3. VERIFICA SE CLICOU EM ALGUM BALÃO
+  for (let balao of baloes) {
+    if (dist(mouseX, mouseY, balao.x, balao.y) < balao.raio) {
+      console.log("Cliquei no balão!");
+      window.location.href = "index.html";
+      return;
+    }
   }
 }
 
 function desenharCachoDeBaloes() {
   anguloBalao += 0.03;
-
-  // Limpa a lista de balões a cada frame
   baloes = [];
 
   let desviosX = [0, -larguraCam * 0.15, larguraCam * 0.15, -larguraCam * 0.08, larguraCam * 0.08];
@@ -176,7 +247,6 @@ function desenharCachoDeBaloes() {
   for (let i = 0; i < 5; i++) {
     let bX = amarraEsqX + balancoEsqX + desviosX[i];
     let bY = amarraEsqY - (alturaCam * 0.75) + desviosY[i];
-
     line(amarraEsqX, amarraEsqY, bX, bY);
   }
 
@@ -188,7 +258,6 @@ function desenharCachoDeBaloes() {
   for (let i = 0; i < 5; i++) {
     let bX = amarraDirX + balancoDirX + desviosX[i];
     let bY = amarraDirY - (alturaCam * 0.75) + desviosY[i];
-
     line(amarraDirX, amarraDirY, bX, bY);
   }
 
@@ -199,7 +268,6 @@ function desenharCachoDeBaloes() {
     let bX = amarraEsqX + balancoEsqX + desviosX[i];
     let bY = amarraEsqY - (alturaCam * 0.75) + desviosY[i];
 
-    // Salva posição para detectar clique
     baloes.push({
       x: bX,
       y: bY,
@@ -210,12 +278,7 @@ function desenharCachoDeBaloes() {
     ellipse(bX, bY, diametroBalao, diametroBalao);
 
     fill(255, 255, 255, 100);
-    ellipse(
-      bX - diametroBalao * 0.2,
-      bY - diametroBalao * 0.2,
-      diametroBalao * 0.2,
-      diametroBalao * 0.2
-    );
+    ellipse(bX - diametroBalao * 0.2, bY - diametroBalao * 0.2, diametroBalao * 0.2, diametroBalao * 0.2);
   }
 
   // Desenha os balões da direita
@@ -223,7 +286,6 @@ function desenharCachoDeBaloes() {
     let bX = amarraDirX + balancoDirX + desviosX[i];
     let bY = amarraDirY - (alturaCam * 0.75) + desviosY[i];
 
-    // Salva posição para detectar clique
     baloes.push({
       x: bX,
       y: bY,
@@ -234,25 +296,18 @@ function desenharCachoDeBaloes() {
     ellipse(bX, bY, diametroBalao, diametroBalao);
 
     fill(255, 255, 255, 100);
-    ellipse(
-      bX - diametroBalao * 0.2,
-      bY - diametroBalao * 0.2,
-      diametroBalao * 0.2,
-      diametroBalao * 0.2
-    );
+    ellipse(bX - diametroBalao * 0.2, bY - diametroBalao * 0.2, diametroBalao * 0.2, diametroBalao * 0.2);
   }
 }
 
 function desenharDinheiro() {
   strokeWeight(1);
-  
   let corBolinha = color(100, 200, 150); 
   let corBolinhaAr = color(150, 255, 180, 180); 
   
   for (let i = 0; i < totalGrana; i++) {
     fill(46, 139, 87);
     stroke(20, 80, 40);
-    
     rect(granaX[i] - 12.5, granaY[i] - 6, 25, 12); 
     
     fill(corBolinha);
@@ -297,26 +352,5 @@ function desenharGasDoRiso() {
     ellipse(gasX[i], gasY[i], 25);
     gasY[i] += 1;
     if (gasY[i] > height) gasY[i] = -20;
-  }
-}
-
-function mousePressed() {
-
-  userStartAudio();
-
-  if (risadaCoringa && !risadaCoringa.isPlaying()) {
-    risadaCoringa.loop();
-  }
-
-  for (let balao of baloes) {
-
-    if (dist(mouseX, mouseY, balao.x, balao.y) < balao.raio) {
-
-      console.log("Cliquei no balão!");
-
-      window.location.href = "index.html";
-
-      return;
-    }
   }
 }
